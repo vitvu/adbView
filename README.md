@@ -12,9 +12,22 @@ No app on the phone. No bundled native libraries. One small .NET executable.
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Donate](https://img.shields.io/badge/Donate-PayPal-00457C?logo=paypal&logoColor=white)](https://paypal.me/vudinhviet)
 
+<br/>
+
+[![Download](https://img.shields.io/github/v/release/vitvu/adbView?label=Download&style=for-the-badge&logo=github&color=2ea44f)](https://github.com/vitvu/adbView/releases/latest)
+
 </div>
 
 ---
+
+## Download
+
+Get the latest version from **[Releases](https://github.com/vitvu/adbView/releases/latest)**:
+
+| File | Notes |
+|---|---|
+| `adbView-x.y.z-win-x64.zip` | **Recommended.** Self-contained: unzip and run, no .NET install needed. |
+| `adbView-x.y.z-win-x64-lite.exe` | 0.2 MB. Requires the [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0). |
 
 ## Highlights
 
@@ -31,7 +44,7 @@ No app on the phone. No bundled native libraries. One small .NET executable.
 ## Requirements
 
 - Windows 10 (1809+) or Windows 11, x64
-- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (lite build only)
 - [`adb`](https://developer.android.com/tools/releases/platform-tools) available in `PATH`, in the Android SDK, or next to `adbView.exe`
 - An Android 5.0+ device with **USB debugging** enabled
 
