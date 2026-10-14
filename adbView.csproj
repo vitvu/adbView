@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <NoWarn>WPF0001</NoWarn>
+    <!-- Low RAM / CPU footprint -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+    <AssemblyName>adbView</AssemblyName>
+    <RootNamespace>AdbView</RootNamespace>
+    <Product>adbView</Product>
+    <Description>Lightweight Android screen mirroring and control over ADB for Windows.</Description>
+    <Authors>vitvu</Authors>
+    <Version>1.0.0</Version>
+    <RepositoryUrl>https://github.com/vitvu/adbView</RepositoryUrl>
+  </PropertyGroup>
+</Project>
+
