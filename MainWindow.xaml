@@ -60,10 +60,6 @@
       <Image x:Name="ScreenImg" Stretch="Uniform" RenderOptions.BitmapScalingMode="Linear"
              MouseLeftButtonDown="Screen_MouseDown" MouseLeftButtonUp="Screen_MouseUp" MouseMove="Screen_MouseMove"
              MouseRightButtonUp="Screen_RightUp" MouseWheel="Screen_Wheel"/>
-      <Border x:Name="StatsBadge" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6" Padding="6,2"
-              CornerRadius="4" Background="#99000000" IsHitTestVisible="False" Visibility="Collapsed">
-        <TextBlock x:Name="StatsText" FontSize="11" FontFamily="Consolas" Foreground="#E0FFFFFF"/>
-      </Border>
       <StackPanel x:Name="Placeholder" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
         <TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8EA;" FontSize="44" Foreground="#77FFFFFF"
                    HorizontalAlignment="Center"/>
@@ -83,6 +79,9 @@
     <!-- Slim toolbar -->
     <DockPanel x:Name="Sidebar" Grid.Column="1" Width="48" Background="{DynamicResource LayerFillColorDefaultBrush}">
       <ToggleButton x:Name="SettingsBtn" DockPanel.Dock="Bottom" Style="{StaticResource Tool}" Content="&#xE713;" Margin="0,2,0,8"/>
+      <!-- Ping / fps: lives in the toolbar so it never covers the phone screen -->
+      <TextBlock x:Name="StatsText" DockPanel.Dock="Bottom" Visibility="Collapsed" FontSize="10" FontWeight="SemiBold"
+                 TextAlignment="Center" LineHeight="12" Margin="0,0,0,4"/>
       <StackPanel Margin="0,8,0,0" HorizontalAlignment="Center">
         <Button x:Name="PowerBtn" Style="{StaticResource Tool}" Content="&#xE7E8;" Click="Power_Click"/>
         <Button x:Name="VolUpBtn" Style="{StaticResource Tool}" Content="&#xE995;" Click="VolUp_Click"/>

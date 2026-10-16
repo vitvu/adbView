@@ -295,13 +295,13 @@ public partial class MainWindow : Window
     {
         if (_stream is not { } s || _viewing is not { } d) { _statsTimer?.Stop(); return; }
         long dec = s.FramesDecoded;
-        Title = d.Name;
         _input?.Ping();
         int ms = _input?.LatencyMs ?? -1;
         string ping = ms >= 0 ? $"{ms} ms" : "– ms";
-        StatsText.Text = $"{ping} · {dec - _lastFrames} fps · {(d.IsWifi ? "Wi-Fi" : "USB")}";
-        StatsText.Foreground = ms < 0 ? Brushes.Gainsboro : ms < 40 ? Brushes.LightGreen : ms < 100 ? Brushes.Khaki : Brushes.Salmon;
-        StatsBadge.Visibility = _gotFrame ? Visibility.Visible : Visibility.Collapsed;
+        Title = $"{d.Name} · {ping} · {dec - _lastFrames} fps · {(d.IsWifi ? "Wi-Fi" : "USB")}";
+        StatsText.Text = $"{(ms >= 0 ? ms : "–")}\nms\n{dec - _lastFrames}\nfps";
+        StatsText.Foreground = ms < 0 ? Brushes.Gray : ms < 40 ? Brushes.MediumSeaGreen : ms < 100 ? Brushes.Goldenrod : Brushes.IndianRed;
+        StatsText.Visibility = _gotFrame ? Visibility.Visible : Visibility.Collapsed;
         SetStatus($"{d.Name} · {s.Width}×{s.Height} · {dec - _lastFrames} fps · {ping}");
         if (Debug)
             File.AppendAllText(Path.Combine(Path.GetTempPath(), "pv_stats.log"),
@@ -339,7 +339,8 @@ public partial class MainWindow : Window
         _input?.Dispose();
         _input = null;
         _viewing = null;
-        StatsBadge.Visibility = Visibility.Collapsed;
+        StatsText.Visibility = Visibility.Collapsed;
+        Title = "adbView";
         ScreenImg.Source = null;
         _bmp = null;
         if (showMessage) ShowPlaceholder(L.S("stopped"));
