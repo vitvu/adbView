@@ -60,6 +60,10 @@
       <Image x:Name="ScreenImg" Stretch="Uniform" RenderOptions.BitmapScalingMode="Linear"
              MouseLeftButtonDown="Screen_MouseDown" MouseLeftButtonUp="Screen_MouseUp" MouseMove="Screen_MouseMove"
              MouseRightButtonUp="Screen_RightUp" MouseWheel="Screen_Wheel"/>
+      <Border x:Name="StatsBadge" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="6" Padding="6,2"
+              CornerRadius="4" Background="#99000000" IsHitTestVisible="False" Visibility="Collapsed">
+        <TextBlock x:Name="StatsText" FontSize="11" FontFamily="Consolas" Foreground="#E0FFFFFF"/>
+      </Border>
       <StackPanel x:Name="Placeholder" VerticalAlignment="Center" HorizontalAlignment="Center" IsHitTestVisible="False">
         <TextBlock FontFamily="Segoe Fluent Icons" Text="&#xE8EA;" FontSize="44" Foreground="#77FFFFFF"
                    HorizontalAlignment="Center"/>

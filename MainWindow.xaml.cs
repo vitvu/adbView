@@ -239,10 +239,12 @@ public partial class MainWindow : Window
         // Auto: smallest level that still covers the on-screen size → sharp image, minimal CPU/bandwidth
         double dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
         double shown = Math.Max(200, (ScreenArea.ActualWidth > 0 ? ScreenArea.ActualWidth : 400) * dpi);
+        // Over the network latency beats sharpness: never above 720p in Auto
+        int max = d.IsWifi ? 1 : original;
         for (int i = 0; i < original; i++)
         {
-            if (Levels[i].Short >= shortSide) return original;
-            if (Levels[i].Short >= shown) return i;
+            if (Levels[i].Short >= shortSide) return Math.Min(original, max);
+            if (Levels[i].Short >= shown || i == max) return i;
         }
         return original;
     }
@@ -294,7 +296,13 @@ public partial class MainWindow : Window
         if (_stream is not { } s || _viewing is not { } d) { _statsTimer?.Stop(); return; }
         long dec = s.FramesDecoded;
         Title = d.Name;
-        SetStatus($"{d.Name} · {s.Width}×{s.Height} · {dec - _lastFrames} fps");
+        _input?.Ping();
+        int ms = _input?.LatencyMs ?? -1;
+        string ping = ms >= 0 ? $"{ms} ms" : "– ms";
+        StatsText.Text = $"{ping} · {dec - _lastFrames} fps · {(d.IsWifi ? "Wi-Fi" : "USB")}";
+        StatsText.Foreground = ms < 0 ? Brushes.Gainsboro : ms < 40 ? Brushes.LightGreen : ms < 100 ? Brushes.Khaki : Brushes.Salmon;
+        StatsBadge.Visibility = _gotFrame ? Visibility.Visible : Visibility.Collapsed;
+        SetStatus($"{d.Name} · {s.Width}×{s.Height} · {dec - _lastFrames} fps · {ping}");
         if (Debug)
             File.AppendAllText(Path.Combine(Path.GetTempPath(), "pv_stats.log"),
                 $"{DateTime.Now:HH:mm:ss} bytes={s.BytesIn} nals={s.NalsIn} decoded={dec} shown={_shown} decMs={s.DecodeTicks * 1000 / Stopwatch.Frequency} convMs={s.ConvTicks * 1000 / Stopwatch.Frequency} size={s.Width}x{s.Height}{Environment.NewLine}");
@@ -331,6 +339,7 @@ public partial class MainWindow : Window
         _input?.Dispose();
         _input = null;
         _viewing = null;
+        StatsBadge.Visibility = Visibility.Collapsed;
         ScreenImg.Source = null;
         _bmp = null;
         if (showMessage) ShowPlaceholder(L.S("stopped"));
@@ -428,8 +437,7 @@ public partial class MainWindow : Window
     void Window_PreviewTextInput(object sender, TextCompositionEventArgs e)
     {
         if (_viewing == null || !ScreenArea.IsKeyboardFocused || string.IsNullOrEmpty(e.Text) || e.Text[0] < ' ') return;
-        var t = e.Text.Replace("'", "'\\''").Replace(" ", "%s");
-        _input?.Send($"input text '{t}'");
+        _input?.Text(e.Text);
         e.Handled = true;
     }
 
