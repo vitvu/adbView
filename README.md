@@ -56,6 +56,14 @@ Get the latest version from **[Releases](https://github.com/vitvu/adbView/releas
 
 Use **⚙ Settings** to switch device, quality, language or theme.
 
+### Wireless (Wi-Fi / LAN, no cable)
+
+- **USB → Wi-Fi:** with the phone plugged in, open **⚙ Settings → Switch USB device to Wi-Fi**. adbView runs `adb tcpip 5555`, finds the phone's IP and connects. You can then unplug the cable.
+- **Connect by IP:** type `IP` or `IP:port` (default port `5555`) and press **Connect**.
+- **Android 11+ Wireless debugging (no cable at all):** on the phone open **Developer options → Wireless debugging → Pair device with pairing code**. Enter the pairing `IP:port` and the 6-digit code, press **Pair**, then enter the `IP:port` shown on the Wireless debugging screen and press **Connect**.
+
+Connected addresses are remembered and reconnected automatically on the next launch. Over the network the bitrate is lowered a little to keep the stream smooth.
+
 ### Controls
 
 | Input | Action on the phone |
@@ -148,7 +156,7 @@ dotnet publish -c Release -p:PublishSingleFile=true -o publish
 
 ## Roadmap
 
-- [ ] ADB over Wi-Fi (connect and pair)
+- [x] ADB over Wi-Fi (connect, pair, USB → Wi-Fi)
 - [ ] Multi-device grid view
 - [ ] GPU decoding and rendering (D3D11)
 - [ ] Landscape and rotation support

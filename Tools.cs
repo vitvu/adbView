@@ -161,6 +161,8 @@ public sealed class Settings
     public string Language { get; set; } = "en";
     public string Theme { get; set; } = "System";
     public bool SidebarOpen { get; set; } = true;
+    /// <summary>Network devices (host:port) to reconnect automatically on start.</summary>
+    public List<string> WifiHosts { get; set; } = new();
 
     static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "adbView", "settings.json");
 
@@ -211,7 +213,14 @@ public static class L
     static readonly Dictionary<string, (string En, string Vi)> T = new()
     {
         ["scanning"] = ("Scanning USB devices…", "Đang quét thiết bị USB…"),
-        ["noDevice"] = ("No USB device.\nPlug in a cable and enable USB debugging.", "Chưa có thiết bị USB.\nCắm cáp và bật USB debugging."),
+        ["noDevice"] = ("No device.\nPlug in a cable, or connect over Wi-Fi in Settings.", "Chưa có thiết bị.\nCắm cáp, hoặc kết nối Wi-Fi trong Cài đặt."),
+        ["wireless"] = ("Wireless (IP:port)", "Không dây (IP:port)"),
+        ["connect"] = ("Connect", "Kết nối"),
+        ["pair"] = ("Pair with code", "Ghép nối bằng mã"),
+        ["tcpip"] = ("Switch USB device to Wi-Fi", "Chuyển thiết bị USB sang Wi-Fi"),
+        ["addrTip"] = ("e.g. 192.168.1.20:5555 — for pairing, use the pairing port shown on the phone", "VD 192.168.1.20:5555 — khi ghép nối, dùng port ghép nối hiện trên điện thoại"),
+        ["codeTip"] = ("6-digit pairing code (Android 11+ Wireless debugging)", "Mã ghép nối 6 số (Gỡ lỗi không dây, Android 11+)"),
+        ["noIp"] = ("Could not find the phone's Wi-Fi IP", "Không tìm được IP Wi-Fi của điện thoại"),
         ["unauthorized"] = ("Tap \"Allow\" for USB debugging on the phone.", "Bấm \"Cho phép\" gỡ lỗi USB trên điện thoại."),
         ["offline"] = ("Device is offline.", "Thiết bị offline."),
         ["connecting"] = ("Connecting…", "Đang kết nối…"),

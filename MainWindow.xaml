@@ -96,6 +96,16 @@
           <TextBlock x:Name="DeviceLabel" Style="{StaticResource Caption}" Margin="0,0,0,4"/>
           <ComboBox x:Name="DeviceBox" HorizontalAlignment="Stretch" DisplayMemberPath="Name"
                     SelectionChanged="DeviceBox_Changed"/>
+          <TextBlock x:Name="WirelessLabel" Style="{StaticResource Caption}"/>
+          <DockPanel>
+            <Button x:Name="ConnectBtn" DockPanel.Dock="Right" Margin="6,0,0,0" Click="Connect_Click"/>
+            <TextBox x:Name="AddrBox" KeyDown="AddrBox_KeyDown"/>
+          </DockPanel>
+          <DockPanel Margin="0,6,0,0">
+            <Button x:Name="PairBtn" DockPanel.Dock="Right" Margin="6,0,0,0" Click="Pair_Click"/>
+            <TextBox x:Name="PairCodeBox" Width="80" HorizontalAlignment="Left" MaxLength="6"/>
+          </DockPanel>
+          <Button x:Name="TcpipBtn" Margin="0,6,0,0" HorizontalAlignment="Stretch" Click="Tcpip_Click"/>
           <TextBlock x:Name="QualityLabel" Style="{StaticResource Caption}"/>
           <ComboBox x:Name="QualityBox" HorizontalAlignment="Stretch" SelectionChanged="Quality_Changed"/>
           <TextBlock x:Name="LanguageLabel" Style="{StaticResource Caption}"/>

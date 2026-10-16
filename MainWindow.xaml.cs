@@ -48,6 +48,7 @@ public partial class MainWindow : Window
             Tools.Locate();
             await Tools.RunAdb("start-server", 20000);
             _ = TrackLoop();
+            foreach (var host in _cfg.WifiHosts.ToList()) _ = Tools.RunAdb($"connect {host}", 8000);
         };
         Closing += (_, _) =>
         {
@@ -65,6 +66,9 @@ public partial class MainWindow : Window
         PowerBtn.ToolTip = L.S("power"); VolUpBtn.ToolTip = L.S("volUp"); VolDownBtn.ToolTip = L.S("volDown");
         ShotBtn.ToolTip = L.S("shot"); SettingsBtn.ToolTip = L.S("settings");
         DeviceLabel.Text = L.S("device");
+        WirelessLabel.Text = L.S("wireless");
+        ConnectBtn.Content = L.S("connect"); PairBtn.Content = L.S("pair"); TcpipBtn.Content = L.S("tcpip");
+        AddrBox.ToolTip = L.S("addrTip"); PairCodeBox.ToolTip = L.S("codeTip");
         QualityLabel.Text = L.S("quality"); LanguageLabel.Text = L.S("language"); ThemeLabel.Text = L.S("theme");
 
         bool was = _loading; _loading = true;
@@ -174,7 +178,6 @@ public partial class MainWindow : Window
         var now = text.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Select(l => l.Split('\t')).Where(a => a.Length >= 2)
             .Select(a => new DeviceItem { Serial = a[0].Trim(), State = a[1].Trim() })
-            .Where(d => !d.IsWifi) // USB only for now
             .ToDictionary(d => d.Serial, d => d.State);
 
         foreach (var d in _devices.Where(d => !now.ContainsKey(d.Serial)).ToList())
@@ -192,6 +195,11 @@ public partial class MainWindow : Window
             else if (state != "device" && d == _viewing) StopView(showMessage: false);
         }
 
+        if (_pendingSelect != null && _devices.FirstOrDefault(x => x.Serial == _pendingSelect) is { } want)
+        {
+            _pendingSelect = null;
+            DeviceBox.SelectedItem = want;
+        }
         if (DeviceBox.SelectedItem == null && _devices.Count > 0) DeviceBox.SelectedIndex = 0;
         if (_viewing == null) RefreshPlaceholder();
     }
@@ -264,7 +272,9 @@ public partial class MainWindow : Window
         var input = new InputInjector(d.Serial, d.ScreenW, d.ScreenH);
         _input = input;
         _ = input.InitAsync();
-        var s = new ScreenStream(d.Serial, w, h, Levels[_level].Bitrate);
+        // Over the network: lower bitrate so Wi-Fi jitter doesn't stall the stream
+        int bitrate = d.IsWifi ? Levels[_level].Bitrate * 3 / 5 : Levels[_level].Bitrate;
+        var s = new ScreenStream(d.Serial, w, h, bitrate);
         s.FrameReady += () => Dispatcher.BeginInvoke(DispatcherPriority.Render, () => Render(s));
         s.Failed += err => Dispatcher.BeginInvoke(() => OnStreamFailed(s, err));
         _stream = s;
@@ -275,6 +285,7 @@ public partial class MainWindow : Window
         _statsTimer.Start();
     }
 
+    static readonly bool Debug = Environment.GetEnvironmentVariable("PV_DEBUG") == "1";
     DispatcherTimer? _statsTimer;
     long _lastFrames, _shown, _lastShown;
 
@@ -284,7 +295,7 @@ public partial class MainWindow : Window
         long dec = s.FramesDecoded;
         Title = d.Name;
         SetStatus($"{d.Name} · {s.Width}×{s.Height} · {dec - _lastFrames} fps");
-        if (Environment.GetEnvironmentVariable("PV_DEBUG") == "1")
+        if (Debug)
             File.AppendAllText(Path.Combine(Path.GetTempPath(), "pv_stats.log"),
                 $"{DateTime.Now:HH:mm:ss} bytes={s.BytesIn} nals={s.NalsIn} decoded={dec} shown={_shown} decMs={s.DecodeTicks * 1000 / Stopwatch.Frequency} convMs={s.ConvTicks * 1000 / Stopwatch.Frequency} size={s.Width}x{s.Height}{Environment.NewLine}");
         _lastFrames = dec; _lastShown = _shown;
@@ -463,4 +474,84 @@ public partial class MainWindow : Window
     }
 
     void SetStatus(string s) => Status.Text = s;
+
+    // ================= Wireless (adb connect / pair / tcpip) =================
+    string? _pendingSelect;
+
+    static string WithPort(string addr, int port = 5555)
+    {
+        addr = addr.Trim();
+        return addr.Length == 0 || addr.Contains(':') ? addr : $"{addr}:{port}";
+    }
+
+    async Task<bool> ConnectTo(string host)
+    {
+        SetStatus($"{L.S("connecting")} {host}");
+        var (_, o) = await Tools.RunAdb($"connect {host}", 12000);
+        bool ok = o.Contains("connected to", StringComparison.OrdinalIgnoreCase) && !o.Contains("cannot", StringComparison.OrdinalIgnoreCase);
+        SetStatus(o.Split('\n').FirstOrDefault()?.Trim() ?? "");
+        if (!ok) return false;
+        _cfg.WifiHosts.Remove(host);
+        _cfg.WifiHosts.Insert(0, host);
+        if (_cfg.WifiHosts.Count > 8) _cfg.WifiHosts.RemoveRange(8, _cfg.WifiHosts.Count - 8);
+        _cfg.Save();
+        _pendingSelect = host;
+        if (_devices.FirstOrDefault(x => x.Serial == host) is { } d) { _pendingSelect = null; DeviceBox.SelectedItem = d; }
+        return true;
+    }
+
+    async void Connect_Click(object sender, RoutedEventArgs e)
+    {
+        var host = WithPort(AddrBox.Text);
+        if (host.Length == 0) return;
+        ConnectBtn.IsEnabled = false;
+        try { await ConnectTo(host); } finally { ConnectBtn.IsEnabled = true; }
+    }
+
+    void AddrBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter) Connect_Click(sender, e);
+    }
+
+    async void Pair_Click(object sender, RoutedEventArgs e)
+    {
+        var host = AddrBox.Text.Trim();
+        var code = PairCodeBox.Text.Trim();
+        if (!host.Contains(':') || code.Length == 0) { SetStatus(L.S("codeTip")); return; }
+        PairBtn.IsEnabled = false;
+        try
+        {
+            var (_, o) = await Tools.RunAdb($"pair {host} {code}", 20000);
+            SetStatus(o.Split('\n').FirstOrDefault()?.Trim() ?? "");
+            if (o.Contains("Successfully paired", StringComparison.OrdinalIgnoreCase)) PairCodeBox.Clear();
+        }
+        finally { PairBtn.IsEnabled = true; }
+    }
+
+    /// <summary>USB device → "adb tcpip 5555" → connect to its Wi-Fi IP, so the cable can be unplugged.</summary>
+    async void Tcpip_Click(object sender, RoutedEventArgs e)
+    {
+        if (Selected is not { IsOnline: true, IsWifi: false } d) return;
+        TcpipBtn.IsEnabled = false;
+        try
+        {
+            var (_, a) = await Tools.RunAdb($"-s {d.Serial} shell ip -f inet addr show wlan0", 8000);
+            var m = Regex.Match(a, @"inet (\d+\.\d+\.\d+\.\d+)");
+            if (!m.Success)
+            {
+                var (_, r) = await Tools.RunAdb($"-s {d.Serial} shell ip route", 8000);
+                m = Regex.Match(r, @"wlan\S*.*?src (\d+\.\d+\.\d+\.\d+)");
+            }
+            if (!m.Success) { SetStatus(L.S("noIp")); return; }
+            var host = $"{m.Groups[1].Value}:5555";
+            AddrBox.Text = host;
+            await Tools.RunAdb($"-s {d.Serial} tcpip 5555", 10000);
+            for (int i = 0; i < 5; i++)
+            {
+                await Task.Delay(1000);
+                if (await ConnectTo(host)) break;
+            }
+        }
+        finally { TcpipBtn.IsEnabled = true; }
+    }
 }
