@@ -452,6 +452,7 @@ public partial class MainWindow : Window
         if (_viewing == null || !ScreenArea.IsKeyboardFocused) return;
         var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
         var mods = Keyboard.Modifiers;
+        if (mods == ModifierKeys.Alt && AltShortcut(key)) { e.Handled = true; return; }
         int code = key switch
         {
             System.Windows.Input.Key.Enter => 66, System.Windows.Input.Key.Back => 67, System.Windows.Input.Key.Delete => 112, System.Windows.Input.Key.Escape => 4, System.Windows.Input.Key.Tab => 61,
@@ -483,6 +484,28 @@ public partial class MainWindow : Window
     }
 
     // ================= Buttons =================
+    /// <summary>adbView's own shortcuts (Alt + key), like scrcpy's. Not forwarded to the phone.</summary>
+    bool AltShortcut(System.Windows.Input.Key key)
+    {
+        var serial = _viewing?.Serial;
+        switch (key)
+        {
+            case System.Windows.Input.Key.H: SendKey(3); break;      // Home
+            case System.Windows.Input.Key.B: SendKey(4); break;      // Back
+            case System.Windows.Input.Key.M: SendKey(187); break;    // Multitasking / recent apps
+            case System.Windows.Input.Key.P: SendKey(26); break;     // Power (screen on / off)
+            case System.Windows.Input.Key.Up: SendKey(24); break;    // Volume up
+            case System.Windows.Input.Key.Down: SendKey(25); break;  // Volume down
+            case System.Windows.Input.Key.S: Shot_Click(this, new RoutedEventArgs()); break; // Screenshot to PC
+            case System.Windows.Input.Key.N: _ = Tools.RunAdb($"-s {serial} shell cmd statusbar expand-notifications", 8000); break;
+            case System.Windows.Input.Key.Q: _ = Tools.RunAdb($"-s {serial} shell cmd statusbar expand-settings", 8000); break;
+            case System.Windows.Input.Key.C: _ = Tools.RunAdb($"-s {serial} shell cmd statusbar collapse", 8000); break;
+            case System.Windows.Input.Key.R: _ = Tools.RunAdb($"-s {serial} shell \"settings put system accelerometer_rotation 0; settings put system user_rotation $(( ($(settings get system user_rotation) + 1) % 4 ))\"", 8000); break; // Rotate
+            default: return false;
+        }
+        return true;
+    }
+
     void SendKey(int code)
     {
         if (_input != null) _input.Key(code);

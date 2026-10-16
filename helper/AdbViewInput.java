@@ -95,9 +95,21 @@ public final class AdbViewInput {
     static void key(int code) throws Exception { key(code, 0); }
 
     static void key(int code, int meta) throws Exception {
+        // Like a real keyboard: modifier keys go down first (apps check for them, e.g. Ctrl+A select-all),
+        // then the key with the meta state, then everything comes back up in reverse order.
+        int[][] mods = {
+            {KeyEvent.META_CTRL_ON, KeyEvent.KEYCODE_CTRL_LEFT, KeyEvent.META_CTRL_ON | KeyEvent.META_CTRL_LEFT_ON},
+            {KeyEvent.META_SHIFT_ON, KeyEvent.KEYCODE_SHIFT_LEFT, KeyEvent.META_SHIFT_ON | KeyEvent.META_SHIFT_LEFT_ON},
+            {KeyEvent.META_ALT_ON, KeyEvent.KEYCODE_ALT_LEFT, KeyEvent.META_ALT_ON | KeyEvent.META_ALT_LEFT_ON},
+        };
         long now = SystemClock.uptimeMillis();
-        send(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD));
-        send(new KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD));
+        int state = 0;
+        for (int[] m : mods)
+            if ((meta & m[0]) != 0) { state |= m[2]; send(keyEvent(now, KeyEvent.ACTION_DOWN, m[1], state)); }
+        send(keyEvent(now, KeyEvent.ACTION_DOWN, code, state));
+        send(keyEvent(now, KeyEvent.ACTION_UP, code, state));
+        for (int i = mods.length - 1; i >= 0; i--)
+            if ((meta & mods[i][0]) != 0) { state &= ~mods[i][2]; send(keyEvent(now, KeyEvent.ACTION_UP, mods[i][1], state)); }
         // Copy / cut: check the clipboard right away instead of waiting for the next poll
         boolean ctrl = (meta & KeyEvent.META_CTRL_ON) != 0;
         if (code == KeyEvent.KEYCODE_COPY || code == KeyEvent.KEYCODE_CUT
@@ -105,6 +117,11 @@ public final class AdbViewInput {
     }
 
     static volatile boolean checkSoon;
+
+    static KeyEvent keyEvent(long now, int action, int code, int meta) {
+        return new KeyEvent(now, now, action, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0,
+                KeyEvent.FLAG_FROM_SYSTEM, InputDevice.SOURCE_KEYBOARD);
+    }
 
     static void text(String s) throws Exception {
         KeyEvent[] evs = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD).getEvents(s.toCharArray());

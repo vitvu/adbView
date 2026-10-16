@@ -70,6 +70,20 @@ Connected addresses are remembered and reconnected automatically on the next lau
 - **Shortcuts:** Ctrl+A / C / X / V / Z, Shift+arrows, Home / End, Ctrl+Backspace… work on the phone like on a hardware keyboard. Ctrl+V pastes what was copied on the PC; Ctrl+C on the phone lands in the PC clipboard right away.
 - **Any language:** type on the PC keyboard (including Vietnamese with Unikey / EVKey / Windows Telex) and the text arrives with correct accents. Emoji work too.
 
+### adbView shortcuts
+
+| Keys | Action |
+|---|---|
+| Alt+H | Home |
+| Alt+B | Back |
+| Alt+M | Recent apps (multitasking) |
+| Alt+P | Power (screen on / off) |
+| Alt+↑ / Alt+↓ | Volume up / down |
+| Alt+N / Alt+Q | Open notifications / quick settings |
+| Alt+C | Close the notification shade |
+| Alt+R | Rotate the screen |
+| Alt+S | Screenshot to `Pictures\adbView` |
+
 ### Latency
 
 **Auto** and **Low** quality favour speed over sharpness: Auto never goes above 720p on USB and uses 480p over Wi-Fi. The current ping and fps are shown in the window title.
