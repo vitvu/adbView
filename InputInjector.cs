@@ -186,6 +186,15 @@ public sealed class InputInjector : IDisposable
         else Send($"input keyevent {androidKeyCode}");
     }
 
+    /// <summary>Raised (on a background thread) when text is copied on the phone. Helper mode only.</summary>
+    public event Action<string>? ClipboardChanged;
+
+    /// <summary>Puts text on the phone clipboard (UTF-8, any language). Helper mode only.</summary>
+    public void SetClipboard(string text)
+    {
+        if (_helper) Queue("c " + Convert.ToBase64String(Encoding.UTF8.GetBytes(text)));
+    }
+
     public void Text(string text)
     {
         if (_helper) { Queue("t " + Convert.ToBase64String(Encoding.UTF8.GetBytes(text))); return; }
@@ -295,7 +304,13 @@ public sealed class InputInjector : IDisposable
         ChildJob.Add(p);
         p.OutputDataReceived += (_, a) =>
         {
-            if (a.Data == null || !a.Data.Contains("__pv_pong")) return;
+            if (a.Data == null) return;
+            if (a.Data.StartsWith("__pv_clip "))
+            {
+                try { ClipboardChanged?.Invoke(Encoding.UTF8.GetString(Convert.FromBase64String(a.Data[10..].Trim()))); } catch { }
+                return;
+            }
+            if (!a.Data.Contains("__pv_pong")) return;
             long t = Interlocked.Exchange(ref _pingSent, 0);
             if (t != 0) LatencyMs = (int)Stopwatch.GetElapsedTime(t).TotalMilliseconds;
         };

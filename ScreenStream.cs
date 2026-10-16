@@ -38,7 +38,9 @@ public sealed unsafe class ScreenStream
     public ScreenStream(string serial, int width, int height, int bitrate, bool network = false)
     {
         _serial = serial; _width = width; _height = height; _bitrate = bitrate;
-        _idleMs = network ? 50 : 4; // network data arrives in bursts with gaps
+        // Network data arrives in bursts with gaps. Start short for low latency; a cut NAL is detected
+        // and doubles this (see RunOnce), so it settles at the smallest value that is safe for the link.
+        _idleMs = network ? 16 : 3;
     }
 
     public void Start()

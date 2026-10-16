@@ -64,6 +64,15 @@ Use **⚙ Settings** to switch device, quality, language or theme.
 
 Connected addresses are remembered and reconnected automatically on the next launch. Over the network the bitrate is lowered a little to keep the stream smooth.
 
+### Clipboard & typing
+
+- **Clipboard sync:** text copied on the phone appears in the Windows clipboard, and text copied on the PC appears on the phone, automatically in both directions.
+- **Any language:** type on the PC keyboard (including Vietnamese with Unikey / EVKey / Windows Telex) and the text arrives with correct accents. Emoji work too.
+
+### Latency
+
+**Auto** and **Low** quality favour speed over sharpness: Auto never goes above 720p on USB and uses 480p over Wi-Fi. The current ping and fps are shown in the window title.
+
 ### Controls
 
 | Input | Action on the phone |

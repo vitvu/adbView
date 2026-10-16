@@ -26,7 +26,7 @@ public partial class MainWindow : Window
     // Quality levels: key, short side px (0 = native), bitrate
     static readonly (string Key, int Short, int Bitrate)[] Levels =
     {
-        ("Low", 480, 1_500_000), ("Medium", 720, 3_000_000), ("High", 1080, 6_000_000),
+        ("Low", 480, 1_000_000), ("Medium", 720, 3_000_000), ("High", 1080, 6_000_000),
         ("Ultra", 1440, 10_000_000), ("Original", 0, 12_000_000),
     };
     List<string> _qualityKeys = new() { "Auto" }; // what the quality box currently lists
@@ -45,6 +45,14 @@ public partial class MainWindow : Window
 
         Loaded += async (_, _) =>
         {
+            // PC clipboard → phone: Windows tells us about every copy (WM_CLIPBOARDUPDATE), no polling
+            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+            AddClipboardFormatListener(hwnd);
+            System.Windows.Interop.HwndSource.FromHwnd(hwnd).AddHook((IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled) =>
+            {
+                if (msg == 0x031D) OnPcClipboardChanged();
+                return IntPtr.Zero;
+            });
             Tools.Locate();
             await Tools.RunAdb("start-server", 20000);
             _ = TrackLoop();
@@ -236,11 +244,11 @@ public partial class MainWindow : Window
         int original = Levels.Length - 1;
         int q = Array.FindIndex(Levels, l => l.Key == _cfg.Quality);
         if (q >= 0) return Levels[q].Short == 0 || Levels[q].Short >= shortSide ? original : q;
-        // Auto: smallest level that still covers the on-screen size → sharp image, minimal CPU/bandwidth
+        // Auto = lowest latency: smallest level that covers the on-screen size, never above 720p on USB
+        // and always the lowest level over the network (a slightly soft image is fine, speed comes first)
         double dpi = VisualTreeHelper.GetDpi(this).DpiScaleX;
         double shown = Math.Max(200, (ScreenArea.ActualWidth > 0 ? ScreenArea.ActualWidth : 400) * dpi);
-        // Over the network latency beats sharpness: never above 720p in Auto
-        int max = d.IsWifi ? 1 : original;
+        int max = d.IsWifi ? 0 : 1;
         for (int i = 0; i < original; i++)
         {
             if (Levels[i].Short >= shortSide) return Math.Min(original, max);
@@ -273,6 +281,7 @@ public partial class MainWindow : Window
         _gotFrame = false;
         var input = new InputInjector(d.Serial, d.ScreenW, d.ScreenH);
         _input = input;
+        input.ClipboardChanged += t => Dispatcher.BeginInvoke(() => { if (_input == input) OnPhoneClipboardChanged(t); });
         _ = input.InitAsync();
         // Over the network: lower bitrate so Wi-Fi jitter doesn't stall the stream
         int bitrate = d.IsWifi ? Levels[_level].Bitrate * 3 / 5 : Levels[_level].Bitrate;
@@ -479,6 +488,31 @@ public partial class MainWindow : Window
     }
 
     void SetStatus(string s) => Status.Text = s;
+
+    // ================= Clipboard sync (both ways, UTF-8 so Vietnamese / emoji survive) =================
+    string? _lastClip; // last text synced in either direction, so a copy never bounces back
+
+    void OnPcClipboardChanged()
+    {
+        if (_input == null) return;
+        string? t = null;
+        for (int i = 0; i < 3 && t == null; i++) // the clipboard can be briefly locked by the app that wrote it
+            try { t = Clipboard.ContainsText() ? Clipboard.GetText() : ""; } catch { Thread.Sleep(20); }
+        if (string.IsNullOrEmpty(t) || t == _lastClip || t.Length > 1_000_000) return;
+        _lastClip = t;
+        _input.SetClipboard(t);
+    }
+
+    void OnPhoneClipboardChanged(string t)
+    {
+        if (string.IsNullOrEmpty(t) || t == _lastClip) return;
+        _lastClip = t;
+        for (int i = 0; i < 5; i++)
+            try { Clipboard.SetDataObject(t, true); return; } catch { Thread.Sleep(30); }
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    static extern bool AddClipboardFormatListener(IntPtr hwnd);
 
     // ================= Wireless (adb connect / pair / tcpip) =================
     string? _pendingSelect;
