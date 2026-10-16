@@ -450,12 +450,36 @@ public partial class MainWindow : Window
     void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (_viewing == null || !ScreenArea.IsKeyboardFocused) return;
-        int code = e.Key switch
+        var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
+        var mods = Keyboard.Modifiers;
+        int code = key switch
         {
             System.Windows.Input.Key.Enter => 66, System.Windows.Input.Key.Back => 67, System.Windows.Input.Key.Delete => 112, System.Windows.Input.Key.Escape => 4, System.Windows.Input.Key.Tab => 61,
-            System.Windows.Input.Key.Left => 21, System.Windows.Input.Key.Right => 22, System.Windows.Input.Key.Up => 19, System.Windows.Input.Key.Down => 20, _ => 0,
+            System.Windows.Input.Key.Left => 21, System.Windows.Input.Key.Right => 22, System.Windows.Input.Key.Up => 19, System.Windows.Input.Key.Down => 20,
+            System.Windows.Input.Key.Home => 122, System.Windows.Input.Key.End => 123, System.Windows.Input.Key.PageUp => 92, System.Windows.Input.Key.PageDown => 93,
+            >= System.Windows.Input.Key.A and <= System.Windows.Input.Key.Z when (mods & (ModifierKeys.Control | ModifierKeys.Alt)) != 0
+                => 29 + (key - System.Windows.Input.Key.A), // KEYCODE_A.. — plain letters go through text input instead
+            _ => 0,
         };
-        if (code != 0) { SendKey(code); e.Handled = true; }
+        if (code == 0) return;
+        e.Handled = true;
+        if (_input is not { CanChord: true } input) { if (mods == ModifierKeys.None) SendKey(code); return; }
+
+        // Ctrl+V: push the PC clipboard first so the phone pastes exactly what was copied on the PC
+        if (mods == ModifierKeys.Control && key == System.Windows.Input.Key.V)
+        {
+            _forceClip = true; // phone clipboard may have been replaced (e.g. by Vietnamese typing)
+            OnPcClipboardChanged();
+            _forceClip = false;
+            input.Key(279); // KEYCODE_PASTE
+            return;
+        }
+        // Android KeyEvent meta state: same shortcuts as a hardware keyboard on the phone
+        int meta = 0;
+        if ((mods & ModifierKeys.Control) != 0) meta |= 0x1000 | 0x2000; // META_CTRL_ON | META_CTRL_LEFT_ON
+        if ((mods & ModifierKeys.Shift) != 0) meta |= 0x1 | 0x40;        // META_SHIFT_ON | META_SHIFT_LEFT_ON
+        if ((mods & ModifierKeys.Alt) != 0) meta |= 0x2 | 0x10;          // META_ALT_ON | META_ALT_LEFT_ON
+        input.Key(code, meta);
     }
 
     // ================= Buttons =================
@@ -490,6 +514,7 @@ public partial class MainWindow : Window
     void SetStatus(string s) => Status.Text = s;
 
     // ================= Clipboard sync (both ways, UTF-8 so Vietnamese / emoji survive) =================
+    bool _forceClip;
     string? _lastClip; // last text synced in either direction, so a copy never bounces back
 
     void OnPcClipboardChanged()
@@ -498,7 +523,8 @@ public partial class MainWindow : Window
         string? t = null;
         for (int i = 0; i < 3 && t == null; i++) // the clipboard can be briefly locked by the app that wrote it
             try { t = Clipboard.ContainsText() ? Clipboard.GetText() : ""; } catch { Thread.Sleep(20); }
-        if (string.IsNullOrEmpty(t) || t == _lastClip || t.Length > 1_000_000) return;
+        if (string.IsNullOrEmpty(t) || t.Length > 1_000_000) return;
+        if (t == _lastClip && !_forceClip) return;
         _lastClip = t;
         _input.SetClipboard(t);
     }

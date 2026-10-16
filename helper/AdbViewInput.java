@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets;
  * Also keeps the clipboard in sync with the PC.
  * Reads one command per line from stdin:
  *   d X Y | m X Y | u X Y   touch down / move / up (display pixels)
- *   k CODE                  key press (Android keycode)
+ *   k CODE [META]           key press (Android keycode, optional KeyEvent meta state e.g. Ctrl)
  *   t BASE64                type UTF-8 text (Vietnamese etc. via clipboard + paste)
  *   c BASE64                set the phone clipboard (from the PC)
  *   p                       ping, answers "__pv_pong"
@@ -75,7 +75,7 @@ public final class AdbViewInput {
             case "d": touch(MotionEvent.ACTION_DOWN, a); break;
             case "m": touch(MotionEvent.ACTION_MOVE, a); break;
             case "u": touch(MotionEvent.ACTION_UP, a); break;
-            case "k": key(Integer.parseInt(a[1])); break;
+            case "k": key(Integer.parseInt(a[1]), a.length > 2 ? Integer.parseInt(a[2]) : 0); break;
             case "t": text(unb64(a[1])); break;
             case "c": writeClip(a.length > 1 ? unb64(a[1]) : ""); break;
             case "p": say("__pv_pong"); break;
@@ -92,11 +92,19 @@ public final class AdbViewInput {
         e.recycle();
     }
 
-    static void key(int code) throws Exception {
+    static void key(int code) throws Exception { key(code, 0); }
+
+    static void key(int code, int meta) throws Exception {
         long now = SystemClock.uptimeMillis();
-        send(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD));
-        send(new KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0, 0, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD));
+        send(new KeyEvent(now, now, KeyEvent.ACTION_DOWN, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD));
+        send(new KeyEvent(now, now, KeyEvent.ACTION_UP, code, 0, meta, KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, InputDevice.SOURCE_KEYBOARD));
+        // Copy / cut: check the clipboard right away instead of waiting for the next poll
+        boolean ctrl = (meta & KeyEvent.META_CTRL_ON) != 0;
+        if (code == KeyEvent.KEYCODE_COPY || code == KeyEvent.KEYCODE_CUT
+                || (ctrl && (code == KeyEvent.KEYCODE_C || code == KeyEvent.KEYCODE_X))) checkSoon = true;
     }
+
+    static volatile boolean checkSoon;
 
     static void text(String s) throws Exception {
         KeyEvent[] evs = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD).getEvents(s.toCharArray());
@@ -163,7 +171,9 @@ public final class AdbViewInput {
 
     static void watchClipboard() {
         while (true) {
-            SystemClock.sleep(500);
+            // Poll every 500 ms, or after ~60 ms when a copy was just triggered from the PC
+            for (int i = 0; i < 10 && !checkSoon; i++) SystemClock.sleep(50);
+            if (checkSoon) { SystemClock.sleep(60); checkSoon = false; }
             String now = readClip();
             synchronized (AdbViewInput.class) {
                 if (now == null || now.equals(lastClip)) continue;

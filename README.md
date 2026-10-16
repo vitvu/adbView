@@ -67,6 +67,7 @@ Connected addresses are remembered and reconnected automatically on the next lau
 ### Clipboard & typing
 
 - **Clipboard sync:** text copied on the phone appears in the Windows clipboard, and text copied on the PC appears on the phone, automatically in both directions.
+- **Shortcuts:** Ctrl+A / C / X / V / Z, Shift+arrows, Home / End, Ctrl+Backspace… work on the phone like on a hardware keyboard. Ctrl+V pastes what was copied on the PC; Ctrl+C on the phone lands in the PC clipboard right away.
 - **Any language:** type on the PC keyboard (including Vietnamese with Unikey / EVKey / Windows Telex) and the text arrives with correct accents. Emoji work too.
 
 ### Latency

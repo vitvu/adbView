@@ -173,9 +173,12 @@ public sealed class InputInjector : IDisposable
     }
 
     // ---------- keys ----------
-    public void Key(int androidKeyCode)
+    /// <summary>True when keys with modifiers (Ctrl+C, Shift+arrows…) can be sent.</summary>
+    public bool CanChord => _helper;
+
+    public void Key(int androidKeyCode, int meta = 0)
     {
-        if (_helper) { Queue($"k {androidKeyCode}"); return; }
+        if (_helper) { Queue(meta == 0 ? $"k {androidKeyCode}" : $"k {androidKeyCode} {meta}"); return; }
         if (_keys.TryGetValue(androidKeyCode, out var k))
         {
             var e = new EventWriter(_is64);
