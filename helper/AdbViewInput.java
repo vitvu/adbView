@@ -75,7 +75,8 @@ public final class AdbViewInput {
             case "d": touch(MotionEvent.ACTION_DOWN, a); break;
             case "m": touch(MotionEvent.ACTION_MOVE, a); break;
             case "u": touch(MotionEvent.ACTION_UP, a); break;
-            case "k": key(Integer.parseInt(a[1]), a.length > 2 ? Integer.parseInt(a[2]) : 0); break;
+            case "s": scroll(Float.parseFloat(a[1]), Float.parseFloat(a[2]), Float.parseFloat(a[3]), a.length > 4 ? Float.parseFloat(a[4]) : 0f); break;
+            case "k":key(Integer.parseInt(a[1]), a.length > 2 ? Integer.parseInt(a[2]) : 0); break;
             case "t": text(unb64(a[1])); break;
             case "c": writeClip(a.length > 1 ? unb64(a[1]) : ""); break;
             case "p": say("__pv_pong"); break;
@@ -88,6 +89,23 @@ public final class AdbViewInput {
         MotionEvent e = MotionEvent.obtain(downTime, now, action, Float.parseFloat(a[1]), Float.parseFloat(a[2]),
                 action == MotionEvent.ACTION_UP ? 0f : 1f, 1f, 0, 1f, 1f, 0, 0);
         e.setSource(InputDevice.SOURCE_TOUCHSCREEN);
+        send(e);
+        e.recycle();
+    }
+
+    /** Mouse-wheel scroll at (x, y): v / h in notches (+v = up). Scrolls like a real mouse, no fling. */
+    static void scroll(float x, float y, float v, float h) throws Exception {
+        MotionEvent.PointerProperties[] pp = { new MotionEvent.PointerProperties() };
+        pp[0].id = 0;
+        pp[0].toolType = MotionEvent.TOOL_TYPE_MOUSE;
+        MotionEvent.PointerCoords[] pc = { new MotionEvent.PointerCoords() };
+        pc[0].x = x;
+        pc[0].y = y;
+        pc[0].setAxisValue(MotionEvent.AXIS_VSCROLL, v);
+        pc[0].setAxisValue(MotionEvent.AXIS_HSCROLL, h);
+        long now = SystemClock.uptimeMillis();
+        MotionEvent e = MotionEvent.obtain(now, now, MotionEvent.ACTION_SCROLL, 1, pp, pc, 0, 0, 1f, 1f, 0, 0,
+                InputDevice.SOURCE_MOUSE, 0);
         send(e);
         e.recycle();
     }

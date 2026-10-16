@@ -159,9 +159,32 @@ public sealed class InputInjector : IDisposable
         Write(_touchDev!, e);
     }
 
-    /// <summary>Smooth swipe made of real touch events (used for mouse wheel).</summary>
-    public async Task Swipe(int x1, int y1, int x2, int y2, int steps = 8, int stepMs = 12)
+    /// <summary>True when real mouse-wheel events can be sent (see <see cref="Scroll"/>).</summary>
+    public bool CanScroll => _helper;
+
+    /// <summary>Mouse-wheel scroll at (x, y) in notches (+v = up, +h = right). Helper mode only.</summary>
+    public void Scroll(int x, int y, float v, float h = 0)
     {
+        var ci = System.Globalization.CultureInfo.InvariantCulture;
+        if (_helper) Queue(string.Format(ci, "s {0} {1} {2:0.###} {3:0.###}", x, y, v, h));
+    }
+
+    /// <summary>Smooth swipe made of real touch events (fallback for the mouse wheel).</summary>
+    public async Task Swipe(int x1, int y1, int x2, int y2, int steps = 8, int stepMs = 12, int settleMs = 0)
+    {
+        if (settleMs > 0 && DirectTouch)
+        {
+            TouchDown(x1, y1);
+            for (int i = 1; i <= steps; i++)
+            {
+                await Task.Delay(stepMs);
+                TouchMove(x1 + (x2 - x1) * i / steps, y1 + (y2 - y1) * i / steps);
+            }
+            await Task.Delay(settleMs); // finger rests before lifting → zero velocity → no fling
+            TouchMove(x2, y2);
+            TouchUp();
+            return;
+        }
         if (!DirectTouch) { Send($"input swipe {x1} {y1} {x2} {y2} {steps * stepMs}"); return; }
         TouchDown(x1, y1);
         for (int i = 1; i <= steps; i++)

@@ -434,10 +434,20 @@ public partial class MainWindow : Window
 
     void Screen_Wheel(object sender, MouseWheelEventArgs e)
     {
-        if (_viewing is not { } d) return;
+        if (_viewing is not { } d || _input is not { } input) return;
+        e.Handled = true;
+        // Real wheel events at the pointer: one notch = one small step, no fling (touchpads send fractions)
+        if (input.CanScroll && ToDevice(e.GetPosition(ScreenImg), out int px, out int py))
+        {
+            float notches = e.Delta / 120f;
+            if ((Keyboard.Modifiers & ModifierKeys.Shift) != 0) input.Scroll(px, py, 0, -notches); // Shift+wheel = horizontal
+            else input.Scroll(px, py, notches);
+            return;
+        }
+        // Fallback (no helper): a short, slow drag that stops before release, so it doesn't fling
         int x = d.ScreenW / 2, y1 = d.ScreenH / 2;
-        int y2 = y1 + (e.Delta > 0 ? 1 : -1) * d.ScreenH / 4;
-        _ = _input?.Swipe(x, y1, x, y2);
+        int y2 = y1 + Math.Sign(e.Delta) * d.ScreenH / 12;
+        _ = input.Swipe(x, y1, x, y2, steps: 6, stepMs: 16, settleMs: 80);
     }
 
     void Window_PreviewTextInput(object sender, TextCompositionEventArgs e)
