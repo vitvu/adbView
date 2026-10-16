@@ -276,7 +276,7 @@ public partial class MainWindow : Window
         _ = input.InitAsync();
         // Over the network: lower bitrate so Wi-Fi jitter doesn't stall the stream
         int bitrate = d.IsWifi ? Levels[_level].Bitrate * 3 / 5 : Levels[_level].Bitrate;
-        var s = new ScreenStream(d.Serial, w, h, bitrate);
+        var s = new ScreenStream(d.Serial, w, h, bitrate, d.IsWifi);
         s.FrameReady += () => Dispatcher.BeginInvoke(DispatcherPriority.Render, () => Render(s));
         s.Failed += err => Dispatcher.BeginInvoke(() => OnStreamFailed(s, err));
         _stream = s;
@@ -299,9 +299,6 @@ public partial class MainWindow : Window
         int ms = _input?.LatencyMs ?? -1;
         string ping = ms >= 0 ? $"{ms} ms" : "– ms";
         Title = $"{d.Name} · {ping} · {dec - _lastFrames} fps · {(d.IsWifi ? "Wi-Fi" : "USB")}";
-        StatsText.Text = $"{(ms >= 0 ? ms : "–")}\nms\n{dec - _lastFrames}\nfps";
-        StatsText.Foreground = ms < 0 ? Brushes.Gray : ms < 40 ? Brushes.MediumSeaGreen : ms < 100 ? Brushes.Goldenrod : Brushes.IndianRed;
-        StatsText.Visibility = _gotFrame ? Visibility.Visible : Visibility.Collapsed;
         SetStatus($"{d.Name} · {s.Width}×{s.Height} · {dec - _lastFrames} fps · {ping}");
         if (Debug)
             File.AppendAllText(Path.Combine(Path.GetTempPath(), "pv_stats.log"),
@@ -339,7 +336,6 @@ public partial class MainWindow : Window
         _input?.Dispose();
         _input = null;
         _viewing = null;
-        StatsText.Visibility = Visibility.Collapsed;
         Title = "adbView";
         ScreenImg.Source = null;
         _bmp = null;

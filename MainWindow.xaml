@@ -78,11 +78,7 @@
 
     <!-- Slim toolbar -->
     <DockPanel x:Name="Sidebar" Grid.Column="1" Width="48" Background="{DynamicResource LayerFillColorDefaultBrush}">
-      <ToggleButton x:Name="SettingsBtn" DockPanel.Dock="Bottom" Style="{StaticResource Tool}" Content="&#xE713;" Margin="0,2,0,8"/>
-      <!-- Ping / fps: lives in the toolbar so it never covers the phone screen -->
-      <TextBlock x:Name="StatsText" DockPanel.Dock="Bottom" Visibility="Collapsed" FontSize="10" FontWeight="SemiBold"
-                 TextAlignment="Center" LineHeight="12" Margin="0,0,0,4"/>
-      <StackPanel Margin="0,8,0,0" HorizontalAlignment="Center">
+      <ToggleButton x:Name="SettingsBtn" DockPanel.Dock="Bottom" Style="{StaticResource Tool}" Content="&#xE713;" Margin="0,2,0,8"/>      <StackPanel Margin="0,8,0,0" HorizontalAlignment="Center">
         <Button x:Name="PowerBtn" Style="{StaticResource Tool}" Content="&#xE7E8;" Click="Power_Click"/>
         <Button x:Name="VolUpBtn" Style="{StaticResource Tool}" Content="&#xE995;" Click="VolUp_Click"/>
         <Button x:Name="VolDownBtn" Style="{StaticResource Tool}" Content="&#xE993;" Click="VolDown_Click"/>

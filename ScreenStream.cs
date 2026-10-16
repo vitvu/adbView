@@ -33,9 +33,12 @@ public sealed unsafe class ScreenStream
     /// <summary>Raised on the stream thread when streaming fails or ends unexpectedly.</summary>
     public event Action<string>? Failed;
 
-    public ScreenStream(string serial, int width, int height, int bitrate)
+    int _idleMs; // how long the pipe must stay quiet before the trailing NAL counts as complete
+
+    public ScreenStream(string serial, int width, int height, int bitrate, bool network = false)
     {
         _serial = serial; _width = width; _height = height; _bitrate = bitrate;
+        _idleMs = network ? 50 : 4; // network data arrives in bursts with gaps
     }
 
     public void Start()
@@ -100,6 +103,7 @@ public sealed unsafe class ScreenStream
         int len = 0;
         long total = 0;
         H264Decoder.FrameHandler onFrame = OnFrame;
+        bool early = false;
 
         while (!_stop)
         {
@@ -113,6 +117,19 @@ public sealed unsafe class ScreenStream
 
             fixed (byte* b = buf)
             {
+                // After an early decode the next bytes must open a new NAL. If they don't, that NAL was cut
+                // mid-way (network burst gap): wait longer from now on and restart for a clean keyframe,
+                // otherwise the picture stays smeared with blocks until the next one.
+                if (early && len >= 4)
+                {
+                    early = false;
+                    if (FindStart(b, 0, Math.Min(len, 4)) != 0)
+                    {
+                        _idleMs = Math.Min(_idleMs * 2, 400);
+                        try { p.Kill(); } catch { }
+                        break;
+                    }
+                }
                 int nalStart = FindStart(b, 0, len);
                 if (nalStart < 0) { if (len > 64 && total < 4096) error = System.Text.Encoding.UTF8.GetString(buf, 0, len); continue; }
                 int consumed = nalStart;
@@ -131,11 +148,12 @@ public sealed unsafe class ScreenStream
                 // The encoder writes whole frames at once. If the pipe is now idle, the trailing NAL is
                 // complete: decode it immediately instead of waiting for the next frame (which, on a
                 // static screen, may never come → stale image).
-                if (len - consumed > 4 && PipeIdle(pipe))
+                if (len - consumed > 4 && PipeIdle(pipe, _idleMs))
                 {
                     dec.Decode(b + consumed, len - consumed, onFrame);
                     NalsIn++;
                     consumed = len;
+                    early = true;
                 }
                 if (consumed > 0)
                 {
@@ -150,11 +168,12 @@ public sealed unsafe class ScreenStream
         return total;
     }
 
-    static bool PipeIdle(SafeFileHandle? h)
+    static bool PipeIdle(SafeFileHandle? h, int ms)
     {
         if (h == null) return false;
-        // Must be idle for a few ms: decoding a half-received NAL corrupts the picture until the next keyframe.
-        for (int k = 0; k < 4; k++)
+        // Must be idle for a while: decoding a half-received NAL corrupts the picture until the next keyframe.
+        // During motion the next frame arrives first and ends the wait, so this adds no delay.
+        for (int k = 0; k < ms; k++)
         {
             if (!PeekNamedPipe(h, IntPtr.Zero, 0, IntPtr.Zero, out uint avail, IntPtr.Zero) || avail > 0) return false;
             Thread.Sleep(1);
